@@ -19,6 +19,7 @@ enum TokenType {
   counter,
   set_,
   delay,
+  dynamic_,
   flow,
   startFlow,
   endFlow,
@@ -67,7 +68,7 @@ class Token {
   /// Contains the value of this token:
   /// - int: for INTEGER tokens (=value)
   /// - String: for STRING tokens (=value)
-  /// - String: for NAME tokens (=name) - NOT for keywords
+  /// - String: for NAME tokens (=name); NOT for KEYWORDS
   dynamic value;
 
   /// The line that the token appears in.
@@ -80,7 +81,6 @@ class Token {
   /// The first column starts at the index 0.
   int col;
 
-  // todo: line numbers and position in string
   @override
   bool operator ==(Object other) {
     if (identical(this, other)) {

@@ -20,6 +20,7 @@ class Lexer {
     'counter': TokenType.counter,
     'set': TokenType.set_,
     'delay': TokenType.delay,
+    'dynamic': TokenType.dynamic_,
     'flow': TokenType.flow,
     'startFlow': TokenType.startFlow,
     'endFlow': TokenType.endFlow,
