@@ -76,25 +76,25 @@ class Lexer {
       return t;
     }
 
-    // we are at the beginning of a new line
-    // try to detect an INDENT or DEDENT based on the difference in
-    // indentation levels of the new line and previous line
-    if (_prevChar == NEWLINE) {
-      _readIndentOrDedent(t);
-      if (t.type != TokenType.none) {
-        // indent or detent has been detected
-        _log('next - detected token: $t');
-        return t;
-      }
-      // no indent or dedent detected -> handle _currentChar normally
-    }
-
     // NEWLINE
     // must precede the 'skip whitespaces' code because the newline is
     // considered to be a whitespace by the Util class too
     if (_currentChar == NEWLINE) {
+      // we are at the beginning of a new line
+      // try to detect an INDENT or DEDENT based on the difference in
+      // indentation levels of the new line and previous line
+      //
+      // any detected indents or dedents get added to a queue and are returned
+      // the next time calling next() -> see the two if statements above
+      _checkForIndentsOrDedents();
+
+      // skip all empty lines and whitespace until we are at a new valid char
+      while (Util.isWhiteSpace(_currentChar)) {
+        _log('next - skipping whitespace');
+        _readNextCharacter();
+      }
+
       t.type = TokenType.newLine;
-      _readNextCharacter();
       _log('next - detected token: $t');
       return t;
     }
@@ -227,15 +227,21 @@ class Lexer {
     }
   }
 
-  void _readIndentOrDedent(Token t) {
-    assert(_prevChar == NEWLINE);
+  void _checkForIndentsOrDedents() {
+    assert(_currentChar == NEWLINE);
 
     // count the number of whitespaces at the start of the new line
     // this count is called indent-level
     // e.g. a line starting with 6 whitespaces has an indentLevel=6
     int newLineIndentLevel = 0;
-    while (Util.isWhiteSpace(_currentChar)) {
-      newLineIndentLevel++;
+    _readNextCharacter();
+    while (_currentChar != EOF && Util.isWhiteSpace(_currentChar)) {
+      if (_currentChar == NEWLINE) {
+        // empty lines don´t count for indent/dedent computation
+        newLineIndentLevel = 0;
+      } else {
+        newLineIndentLevel++;
+      }
       _readNextCharacter();
     }
     int prevLineIndentLevel = _indentationLevelStack.last;
@@ -269,10 +275,6 @@ class Lexer {
       while (_indentationLevelStack.last > newLineIndentLevel) {
         _indentationLevelStack.removeLast();
       }
-      if (_dedentQueue.isNotEmpty) {
-        _dedentQueue.removeLast();
-        t.type = TokenType.dedent;
-      }
       return;
     }
 
@@ -285,29 +287,7 @@ class Lexer {
         _indentQueue.add(1);
       }
       _indentationLevelStack.add(newLineIndentLevel);
-
-      if (_indentQueue.isNotEmpty) {
-        _indentQueue.removeLast();
-        t.type = TokenType.indent;
-        return;
-      }
     }
-
-    // if (levelDifference.abs() > 2) {
-    //   errors.add('Invalid indent or dedent!');
-    //   _log('ERROR - invalid_indent_or_dedent');
-    //   return;
-    // }
-    // if (levelDifference == 2) {
-    //   _indentationLevelStack.add(newLineIndentLevel);
-    //   t.type = TokenType.indent;
-    //   return;
-    // }
-    // if (levelDifference == -2) {
-    //   _indentationLevelStack.removeLast();
-    //   t.type = TokenType.dedent;
-    //   return;
-    // }
   }
 
   /// The index of the current character in the [program].
@@ -315,8 +295,6 @@ class Lexer {
 
   /// The current character in the [program].
   String _currentChar;
-
-  String _prevChar;
 
   /// The current line the lexer is at.
   int _line = 1;
@@ -336,7 +314,6 @@ class Lexer {
   /// We need this stack because we want to not only detect
   /// INDENTs but also DEDENTs.
   List<int> _indentationLevelStack = [0];
-
   List<int> _indentQueue = [];
   List<int> _dedentQueue = [];
 
@@ -348,12 +325,10 @@ class Lexer {
   /// Returns [EOF] to indicate that there are no more tokens.
   void _readNextCharacter() {
     if (_characterIndex >= program.length) {
-      _prevChar = _currentChar;
       _currentChar = EOF;
       return;
     }
 
-    _prevChar = _currentChar;
     _currentChar = program[_characterIndex];
     _characterIndex++;
     _col++;

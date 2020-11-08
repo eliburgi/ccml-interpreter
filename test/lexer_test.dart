@@ -183,6 +183,8 @@ flow 'main'
     String program = '''
 flow 'main'
   send text 'Hello World'
+
+  send text 'a'
 flow 'welcome'
   send text 'Welcome'
 
@@ -210,10 +212,11 @@ flow 'bye'
       Token(type: TokenType.text),
       Token(type: TokenType.string, value: 'Hello World'),
       Token(type: TokenType.newLine),
+      Token(type: TokenType.send),
+      Token(type: TokenType.text),
+      Token(type: TokenType.string, value: 'a'),
+      Token(type: TokenType.newLine),
       Token(type: TokenType.dedent),
-      Token(type: TokenType.newLine),
-      Token(type: TokenType.newLine),
-      Token(type: TokenType.newLine),
       Token(type: TokenType.flow),
       Token(type: TokenType.string, value: 'welcome'),
       Token(type: TokenType.newLine),
@@ -231,6 +234,56 @@ flow 'bye'
       Token(type: TokenType.text),
       Token(type: TokenType.string, value: 'Bye bye'),
       Token(type: TokenType.newLine),
+      Token(type: TokenType.dedent),
+      Token(type: TokenType.eof),
+    ]);
+  });
+
+  test('many nested blocks 1', () {
+    String program = '''
+flow 'main'
+  if hasTag 'a'
+    if hasTag 'b'
+      if hasTag 'c'
+        send text 'abc'
+''';
+
+    var lexer = Lexer(program);
+    var parsedTokens = <Token>[];
+    var token = lexer.next();
+    while (token.type != TokenType.eof) {
+      parsedTokens.add(token);
+      token = lexer.next();
+    }
+    parsedTokens.add(token);
+
+    expect(parsedTokens, [
+      Token(type: TokenType.flow),
+      Token(type: TokenType.string, value: 'main'),
+      Token(type: TokenType.newLine),
+      Token(type: TokenType.indent),
+      Token(type: TokenType.if_),
+      Token(type: TokenType.hasTag),
+      Token(type: TokenType.string, value: 'a'),
+      Token(type: TokenType.newLine),
+      Token(type: TokenType.indent),
+      Token(type: TokenType.if_),
+      Token(type: TokenType.hasTag),
+      Token(type: TokenType.string, value: 'b'),
+      Token(type: TokenType.newLine),
+      Token(type: TokenType.indent),
+      Token(type: TokenType.if_),
+      Token(type: TokenType.hasTag),
+      Token(type: TokenType.string, value: 'c'),
+      Token(type: TokenType.newLine),
+      Token(type: TokenType.indent),
+      Token(type: TokenType.send),
+      Token(type: TokenType.text),
+      Token(type: TokenType.string, value: 'abc'),
+      Token(type: TokenType.newLine),
+      Token(type: TokenType.dedent),
+      Token(type: TokenType.dedent),
+      Token(type: TokenType.dedent),
       Token(type: TokenType.dedent),
       Token(type: TokenType.eof),
     ]);
