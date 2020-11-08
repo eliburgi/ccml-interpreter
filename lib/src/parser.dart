@@ -163,7 +163,11 @@ class Parser {
       }
 
       // a statement must end with a NEWLINE
-      _checkToken(TokenType.newLine);
+      // BUT only if the statement did not already contain a NEWLINE and DEDENT
+      // such as send statement with params at the end
+      if (_prevToken.type != TokenType.dedent) {
+        _checkToken(TokenType.newLine);
+      }
 
       if (statement != null) {
         statements.add(statement);
@@ -186,7 +190,7 @@ class Parser {
   Map<String, dynamic> _parseParams() {
     _log('_parseParams - called');
 
-    var params = {};
+    var params = <String, dynamic>{};
 
     // params must, like a block, start with a NEWLINE and and IDENT
     _checkToken(TokenType.newLine);

@@ -29,4 +29,82 @@ flow 'main'
       ),
     );
   });
+
+  test('multiple send statements', () {
+    String program = '''
+flow 'main'
+  send text 'Hello World'
+  send image 'img.png'
+
+  send audio 'audio.mp3'
+''';
+
+    var lexer = Lexer(program, enableLogs: false);
+    var parser = Parser(lexer);
+    var tree = parser.parse();
+
+    expect(
+      tree,
+      ProgramNode(
+        mainFlow: FlowStatementNode(
+          name: 'main',
+          statements: [
+            SendStatementNode(
+              messageType: MessageType.text,
+              messageBody: 'Hello World',
+            ),
+            SendStatementNode(
+              messageType: MessageType.image,
+              messageBody: 'img.png',
+            ),
+            SendStatementNode(
+              messageType: MessageType.audio,
+              messageBody: 'audio.mp3',
+            ),
+          ],
+        ),
+      ),
+    );
+  });
+
+  test('with params', () {
+    String program = '''
+create sender 'AB'
+  authorId = '#1'
+flow 'main'
+  send event 'start-task'
+    payload = 123
+''';
+
+    var lexer = Lexer(program, enableLogs: true);
+    var parser = Parser(lexer);
+    var tree = parser.parse();
+
+    expect(
+      tree,
+      ProgramNode(
+        declarations: [
+          CreateStatementNode(
+            entityType: EntityType.sender,
+            entityName: 'AB',
+            params: {'authorId': '#1'},
+          ),
+        ],
+        mainFlow: FlowStatementNode(
+          name: 'main',
+          statements: [
+            SendStatementNode(
+              messageType: MessageType.event,
+              messageBody: 'start-task',
+              params: {'payload': 123},
+            ),
+            SendStatementNode(
+              messageType: MessageType.text,
+              messageBody: 'a',
+            ),
+          ],
+        ),
+      ),
+    );
+  });
 }

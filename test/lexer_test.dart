@@ -288,4 +288,52 @@ flow 'main'
       Token(type: TokenType.eof),
     ]);
   });
+
+  test('with params', () {
+    String program = '''
+create sender 'AB'
+  authorId = '#1'
+flow 'main'
+  send event 'start-task'
+    payload = 123
+''';
+
+    var lexer = Lexer(program);
+    var parsedTokens = <Token>[];
+    var token = lexer.next();
+    while (token.type != TokenType.eof) {
+      parsedTokens.add(token);
+      token = lexer.next();
+    }
+    parsedTokens.add(token);
+
+    expect(parsedTokens, [
+      Token(type: TokenType.create),
+      Token(type: TokenType.sender),
+      Token(type: TokenType.string, value: 'AB'),
+      Token(type: TokenType.newLine),
+      Token(type: TokenType.indent),
+      Token(type: TokenType.name, value: 'authorId'),
+      Token(type: TokenType.assign),
+      Token(type: TokenType.string, value: '#1'),
+      Token(type: TokenType.newLine),
+      Token(type: TokenType.dedent),
+      Token(type: TokenType.flow),
+      Token(type: TokenType.string, value: 'main'),
+      Token(type: TokenType.newLine),
+      Token(type: TokenType.indent),
+      Token(type: TokenType.send),
+      Token(type: TokenType.event),
+      Token(type: TokenType.string, value: 'start-task'),
+      Token(type: TokenType.newLine),
+      Token(type: TokenType.indent),
+      Token(type: TokenType.name, value: 'payload'),
+      Token(type: TokenType.assign),
+      Token(type: TokenType.integer, value: 123),
+      Token(type: TokenType.newLine),
+      Token(type: TokenType.dedent),
+      Token(type: TokenType.dedent),
+      Token(type: TokenType.eof),
+    ]);
+  });
 }

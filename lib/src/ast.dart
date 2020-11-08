@@ -119,6 +119,12 @@ class FlowStatementNode extends ASTNode {
 enum EntityType { sender, counter }
 
 class CreateStatementNode extends ASTNode {
+  CreateStatementNode({
+    this.entityType,
+    this.entityName,
+    this.params,
+  });
+
   EntityType entityType;
   String entityName = '';
   Map<String, dynamic> params = {};
@@ -131,6 +137,19 @@ class CreateStatementNode extends ASTNode {
 
     log('execute - finished - context: $context');
   }
+
+  @override
+  bool operator ==(Object other) {
+    if (identical(this, other)) {
+      return false;
+    }
+    return other is CreateStatementNode &&
+        this.entityType == other.entityType &&
+        this.entityName == other.entityName;
+  }
+
+  @override
+  int get hashCode => hashList([this.entityType, this.entityName]);
 }
 
 class SetDelayStatementNode extends ASTNode {
@@ -210,13 +229,11 @@ class SendStatementNode extends ASTNode {
     }
     return other is SendStatementNode &&
         this.messageType == other.messageType &&
-        this.messageBody == other.messageBody &&
-        this.params == other.params;
+        this.messageBody == other.messageBody;
   }
 
   @override
-  int get hashCode =>
-      hashList([this.messageType, this.messageBody, this.params]);
+  int get hashCode => hashList([this.messageType, this.messageBody]);
 }
 
 enum TriggerType { delay, click, event }
