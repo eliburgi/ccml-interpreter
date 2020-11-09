@@ -17,11 +17,11 @@ flow 'main'
     expect(
       tree,
       ProgramNode(
-        mainFlow: FlowStatementNode(
+        mainFlow: FlowNode(
           name: 'main',
           statements: [
             SendStatementNode(
-              messageType: MessageType.text,
+              messageType: SendMessageType.text,
               messageBody: 'Hello World',
             ),
           ],
@@ -46,19 +46,19 @@ flow 'main'
     expect(
       tree,
       ProgramNode(
-        mainFlow: FlowStatementNode(
+        mainFlow: FlowNode(
           name: 'main',
           statements: [
             SendStatementNode(
-              messageType: MessageType.text,
+              messageType: SendMessageType.text,
               messageBody: 'Hello World',
             ),
             SendStatementNode(
-              messageType: MessageType.image,
+              messageType: SendMessageType.image,
               messageBody: 'img.png',
             ),
             SendStatementNode(
-              messageType: MessageType.audio,
+              messageType: SendMessageType.audio,
               messageBody: 'audio.mp3',
             ),
           ],
@@ -90,16 +90,16 @@ flow 'main'
             params: {'authorId': '#1'},
           ),
         ],
-        mainFlow: FlowStatementNode(
+        mainFlow: FlowNode(
           name: 'main',
           statements: [
             SendStatementNode(
-              messageType: MessageType.event,
+              messageType: SendMessageType.event,
               messageBody: 'start-task',
               params: {'payload': 123},
             ),
             SendStatementNode(
-              messageType: MessageType.text,
+              messageType: SendMessageType.text,
               messageBody: 'a',
             ),
           ],

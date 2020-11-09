@@ -63,10 +63,10 @@ class Parser {
     return declarations;
   }
 
-  ASTNode _parseMainFlow() {
+  FlowNode _parseMainFlow() {
     _log('_parseMainFlow - called');
 
-    var node = FlowStatementNode();
+    var node = FlowNode();
 
     // a flow always starts with the flow keyword
     node.lineStart = _currentToken.line;
@@ -88,10 +88,10 @@ class Parser {
     return node;
   }
 
-  List<ASTNode> _parseFlows() {
+  List<FlowNode> _parseFlows() {
     _log('_parseFlows - called');
 
-    var flows = <ASTNode>[];
+    var flows = <FlowNode>[];
     while (_currentToken.type == TokenType.flow) {
       var flow = _parseFlowStatement();
       flows.add(flow);
@@ -99,10 +99,10 @@ class Parser {
     return flows;
   }
 
-  ASTNode _parseFlowStatement() {
+  FlowNode _parseFlowStatement() {
     _log('_parseFlowStatement - called');
 
-    var node = FlowStatementNode();
+    var node = FlowNode();
 
     // a flow always starts with the flow keyword
     node.lineStart = _currentToken.line;
@@ -284,7 +284,7 @@ class Parser {
       // a set delay statement must specify the delay in milliseconds
       if (_currentToken.type == TokenType.dynamic_) {
         _eat();
-        node.dynamicDelay = true;
+        node.dynamiciallyDelayMessages = true;
       } else if (_currentToken.type == TokenType.integer) {
         _eat();
         node.delayInMilliseconds = _prevToken.value;
@@ -351,19 +351,19 @@ class Parser {
     switch (_currentToken.type) {
       case TokenType.text:
         _eat();
-        node.messageType = MessageType.text;
+        node.messageType = SendMessageType.text;
         break;
       case TokenType.image:
         _eat();
-        node.messageType = MessageType.image;
+        node.messageType = SendMessageType.image;
         break;
       case TokenType.audio:
         _eat();
-        node.messageType = MessageType.audio;
+        node.messageType = SendMessageType.audio;
         break;
       case TokenType.event:
         _eat();
-        node.messageType = MessageType.event;
+        node.messageType = SendMessageType.event;
         break;
       default:
         _error('Invalid message type in send statement: ${_currentToken.type}');

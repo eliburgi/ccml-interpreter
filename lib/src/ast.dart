@@ -1,21 +1,19 @@
 import 'dart:ui';
 
-import 'package:meta/meta.dart';
+import 'package:interpreter/src/chatbot.dart';
 
-class ExecutionContext {}
+import 'interpreter.dart';
 
 abstract class ASTNode {
   // may be null
   int lineStart;
   int lineEnd;
 
-  Future<void> execute(ExecutionContext context);
+  Future<void> execute(RuntimeContext context);
 
-  final bool enableLogs = true;
-
-  void log(String message) {
-    if (!enableLogs) return;
-    print('$runtimeType - $message');
+  void log(RuntimeContext context, String message) {
+    if (!context.enableLogs) return;
+    print('$runtimeType - $message - context=$context');
   }
 }
 
@@ -27,22 +25,36 @@ class ProgramNode extends ASTNode {
   });
 
   List<ASTNode> declarations;
-  ASTNode mainFlow;
-  List<ASTNode> flows;
+  FlowNode mainFlow;
+  List<FlowNode> flows;
 
   @override
-  Future<void> execute(ExecutionContext context) async {
-    log('execute - called - context: $context');
+  Future<void> execute(RuntimeContext context) async {
+    log(context, 'execute - called');
 
+    // clear any previous chatbot state when starting a new program
+    context.chatbot.clear();
+
+    // put all flows into the context´s lookup table
+    // this is required especially by the startFlow statement
+    context.flows.putIfAbsent(mainFlow.name, () => mainFlow);
+    if (flows != null) {
+      for (var flow in flows) {
+        context.flows.putIfAbsent(flow.name, () => flow);
+      }
+    }
+
+    // execute all declarative statments before starting the main flow
     if (declarations != null) {
       for (var statement in declarations) {
         await statement.execute(context);
       }
     }
 
+    // the actual entry point of the conversation
     await mainFlow.execute(context);
 
-    log('execute - finished - context: $context');
+    log(context, 'execute - finished');
   }
 
   @override
@@ -57,38 +69,8 @@ class ProgramNode extends ASTNode {
   int get hashCode => hashList([]);
 }
 
-class BlockNode extends ASTNode {
-  BlockNode({
-    @required this.statements,
-  });
-
-  final List<ASTNode> statements;
-
-  @override
-  Future<void> execute(ExecutionContext context) async {
-    log('execute - called - context: $context');
-
-    for (var statement in statements) {
-      await statement.execute(context);
-    }
-
-    log('execute - finished - context: $context');
-  }
-
-  @override
-  bool operator ==(Object other) {
-    if (identical(this, other)) {
-      return false;
-    }
-    return other is BlockNode && this.statements == other.statements;
-  }
-
-  @override
-  int get hashCode => hashList([this.statements]);
-}
-
-class FlowStatementNode extends ASTNode {
-  FlowStatementNode({
+class FlowNode extends ASTNode {
+  FlowNode({
     this.name,
     this.statements,
   });
@@ -97,15 +79,30 @@ class FlowStatementNode extends ASTNode {
   List<ASTNode> statements = [];
 
   @override
-  Future<void> execute(ExecutionContext context) async {
-    log('execute - called - context: $context');
+  Future<void> execute(RuntimeContext context) async {
+    log(context, 'execute - called - FLOW $name');
 
-    log('execute - STARTING FLOW $name');
+    // add this flow to the stack because it is now open
+    context.openedFlowsStack.add(name);
+
+    // execute all statements of this flow
     for (var statement in statements) {
       await statement.execute(context);
+
+      // end the flow if an endFlow statement was previously executed
+      if (statement is EndFlowStatementNode) {
+        break;
+      }
     }
 
-    log('execute - finished - context: $context');
+    // make sure all sub-flows that this flow has opened with a startFlow
+    // statement have already ended before this one
+    assert(context.currentFlow == name);
+
+    // remove this flow from the stack because it is no longer open
+    context.openedFlowsStack.removeLast();
+
+    log(context, 'execute - called - FLOW $name');
   }
 
   @override
@@ -113,7 +110,7 @@ class FlowStatementNode extends ASTNode {
     if (identical(this, other)) {
       return false;
     }
-    return other is FlowStatementNode &&
+    return other is FlowNode &&
         this.name == other.name &&
         this.statements == other.statements;
   }
@@ -128,20 +125,17 @@ class CreateStatementNode extends ASTNode {
   CreateStatementNode({
     this.entityType,
     this.entityName,
-    this.params,
+    this.params = const {},
   });
 
   EntityType entityType;
   String entityName = '';
-  Map<String, dynamic> params = {};
+  Map<String, dynamic> params;
 
   @override
-  Future<void> execute(ExecutionContext context) {
-    log('execute - called - context: $context');
-
-    log('execute - CREATING ENTITY [type=$entityType, name=$entityName]');
-
-    log('execute - finished - context: $context');
+  Future<void> execute(RuntimeContext context) {
+    log(context,
+        'execute - CREATE ENTITY [type=$entityType, name=$entityName]');
   }
 
   @override
@@ -163,12 +157,15 @@ class SetDelayStatementNode extends ASTNode {
   int delayInMilliseconds = 0;
 
   @override
-  Future<void> execute(ExecutionContext context) {
-    log('execute - called - context: $context');
-
-    log('execute - SETTING DELAY [dynamic=$dynamicDelay, millis=$delayInMilliseconds]');
-
-    log('execute - finished - context: $context');
+  Future<void> execute(RuntimeContext context) {
+    log(context,
+        'execute - SETTING DELAY [dynamic=$dynamicDelay, millis=$delayInMilliseconds]');
+    if (dynamicDelay) {
+      context.config.dynamiciallyDelayMessages = true;
+    } else {
+      context.config.delayInMilliseconds = delayInMilliseconds;
+    }
+    return Future.value();
   }
 }
 
@@ -176,12 +173,8 @@ class SetSenderStatementNode extends ASTNode {
   String senderName;
 
   @override
-  Future<void> execute(ExecutionContext context) {
-    log('execute - called - context: $context');
-
-    log('execute - SETTING SENDER [name=$senderName]');
-
-    log('execute - finished - context: $context');
+  Future<void> execute(RuntimeContext context) {
+    log(context, 'execute - SETTING SENDER [name=$senderName]');
   }
 }
 
@@ -189,46 +182,92 @@ class StartFlowStatementNode extends ASTNode {
   String flowName;
 
   @override
-  Future<void> execute(ExecutionContext context) {
-    log('execute - called - context: $context');
+  Future<void> execute(RuntimeContext context) async {
+    log(context, 'execute - STARTING NEW FLOW $flowName');
 
-    log('execute - STARTING NEW FLOW [name=$flowName]');
+    // lookup the flow by its name
+    if (!context.flows.containsKey(flowName)) {
+      throw 'Flow $flowName does not exist!';
+    }
+    var flow = context.flows[flowName];
 
-    log('execute - finished - context: $context');
+    // start the flow
+    await flow.execute(context);
   }
 }
 
 class EndFlowStatementNode extends ASTNode {
   @override
-  Future<void> execute(ExecutionContext context) {
-    log('execute - called - context: $context');
-
-    log('execute - ENDING CURRENT FLOW');
-
-    log('execute - finished - context: $context');
+  Future<void> execute(RuntimeContext context) {
+    log(context, 'execute - FORCEFULLY ENDING CURRENT FLOW');
+    return Future.value();
   }
 }
 
-enum MessageType { text, image, audio, event }
+enum SendMessageType { text, image, audio, event }
 
 class SendStatementNode extends ASTNode {
   SendStatementNode({
     this.messageType,
     this.messageBody,
-    this.params,
+    this.params = const {},
   });
 
-  MessageType messageType;
+  SendMessageType messageType;
   String messageBody;
-  Map<String, dynamic> params = {};
+  Map<String, dynamic> params;
 
   @override
-  Future<void> execute(ExecutionContext context) {
-    log('execute - called - context: $context');
+  Future<void> execute(RuntimeContext context) async {
+    log(context, 'execute - called [type=$messageType, body=$messageBody]');
 
-    log('execute - SENDING MESSAGE [type=$messageType, body=$messageBody]');
+    // determine the delay before sending the message
+    int delayInMilliseconds = 0;
+    if (params.containsKey('delay') && params['delay'] is int) {
+      delayInMilliseconds = params['delay'];
+    } else if (context.config.dynamiciallyDelayMessages) {
+      // compute delay for this message based on type and body
+      // todo
+      delayInMilliseconds = 300;
+    } else {
+      delayInMilliseconds = context.config.delayInMilliseconds;
+    }
 
-    log('execute - finished - context: $context');
+    if (delayInMilliseconds > 0) {
+      // signal the user that the chatbot is typing a message
+      context.chatbot.appendMessage(Message.typing());
+      // wait for the given amount of time
+      await Future.delayed(Duration(milliseconds: delayInMilliseconds));
+      // remove the typing indicator
+      context.chatbot.removeLastMessage();
+    }
+
+    // create the message to be sent
+    MessageType type;
+    switch (this.messageType) {
+      case SendMessageType.text:
+        type = MessageType.text;
+        break;
+      case SendMessageType.image:
+        type = MessageType.image;
+        break;
+      case SendMessageType.audio:
+        type = MessageType.audio;
+        break;
+      case SendMessageType.event:
+        type = MessageType.event;
+        break;
+    }
+    Message message = Message(
+      type: type,
+      body: messageBody,
+      params: params,
+    );
+
+    // append the new message to the chat
+    context.chatbot.appendMessage(message);
+
+    log(context, 'execute - finished [type=$messageType, body=$messageBody]');
   }
 
   @override
@@ -254,12 +293,10 @@ class WaitStatementNode extends ASTNode {
   String eventName = '';
 
   @override
-  Future<void> execute(ExecutionContext context) {
-    log('execute - called - context: $context');
-
-    log('execute - WAITING [trigger=$trigger]');
-
-    log('execute - finished - context: $context');
+  Future<void> execute(RuntimeContext context) {
+    log(context, 'execute - called - WAITING [trigger=$trigger]');
+    log(context, 'execute - finished');
+    throw UnimplementedError();
   }
 }
 
@@ -267,9 +304,9 @@ class SingleChoiceStatementNode extends ASTNode {
   List<ChoiceNode> choices;
 
   @override
-  Future<void> execute(ExecutionContext context) {
-    log('execute - called - context: $context');
-    log('execute - finished - context: $context');
+  Future<void> execute(RuntimeContext context) {
+    log(context, 'execute - called');
+    log(context, 'execute - finished');
   }
 }
 
@@ -278,8 +315,8 @@ class ChoiceNode extends ASTNode {
   List<ASTNode> statements = [];
 
   @override
-  Future<void> execute(ExecutionContext context) {
-    log('execute - called - context: $context');
-    log('execute - finished - context: $context');
+  Future<void> execute(RuntimeContext context) {
+    log(context, 'execute - called');
+    log(context, 'execute - finished');
   }
 }
