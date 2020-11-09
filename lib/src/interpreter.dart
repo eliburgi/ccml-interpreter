@@ -1,10 +1,17 @@
+import 'package:interpreter/src/ast.dart';
+
+import 'lexer.dart';
 import 'parser.dart';
 
 class Interpreter {
-  Parser parser;
+  Future<void> interpret(String program) async {
+    var lexer = Lexer(program);
+    var parser = Parser(lexer);
 
-  void interpret() {}
+    var tree = parser.parse();
+    var context = ExecutionContext();
+    await tree.execute(context);
+  }
 }
 
-// RuntimeContext, Frame, ...
-class InterpreterContext {}
+abstract class Chatbot {}

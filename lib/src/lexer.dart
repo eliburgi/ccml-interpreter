@@ -57,8 +57,6 @@ class Lexer {
   /// into a stream of tokens.
   final String program;
 
-  final bool enableLogs;
-
   /// Gets the next token in the program code.
   Token next() {
     Token t = Token(line: _line, col: _col);
@@ -169,8 +167,7 @@ class Lexer {
       return t;
     }
 
-    _log('ERROR - Unknown character: $_currentChar!');
-    errors.add('Unknown character at line $_line col $_col: $_currentChar');
+    _error('ERROR - Unknown character: $_currentChar!');
     t.type = TokenType.none;
     _readNextCharacter();
     return t;
@@ -249,14 +246,18 @@ class Lexer {
     int levelDifference = newLineIndentLevel - prevLineIndentLevel;
 
     const WHITESPACES_PER_INDENT = 2;
-    if (levelDifference / WHITESPACES_PER_INDENT != 0) {
+    if (levelDifference.abs() % WHITESPACES_PER_INDENT != 0) {
       // the number of white spaces is not a multiple of intents or dedents
       // e.g. if an indent is represented by 2 whitespaces
       // and the difference of the new line to the previous line is 3 whitespace
       // then this would equal one indent + one whitespace
       // but this is an invalid indent level because it is not a multiple of 2
       errors.add('Invalid indent or dedent!');
-      _log('ERROR - invalid_indent_or_dedent');
+      _error('''Invalid Indent or Dedent at line $_line and col $_col: 
+                prevLineIndentLevel=$prevLineIndentLevel
+                newLineIndentLevel=$newLineIndentLevel
+                whitespaces per indent = $WHITESPACES_PER_INDENT
+            ''');
     }
 
     // the new line has the same indent level as the previous line
@@ -318,8 +319,6 @@ class Lexer {
   List<int> _indentQueue = [];
   List<int> _dedentQueue = [];
 
-  List<String> errors = [];
-
   /// Reads the current character from the program and advances the [_line]
   /// and [_col] if needed.
   ///
@@ -339,6 +338,16 @@ class Lexer {
       _col = 0;
     }
   }
+
+  List<String> errors = [];
+
+  void _error(String message) {
+    errors.add(message);
+    // terminate lexer forcefully
+    // throw message;
+  }
+
+  final bool enableLogs;
 
   void _log(String message) {
     if (!enableLogs) return;

@@ -1,11 +1,14 @@
 import 'package:flutter_test/flutter_test.dart';
+import 'package:interpreter/src/interpreter.dart';
 
 void main() {
-  // test('adds one to input values', () {
-  //   final calculator = Calculator();
-  //   expect(calculator.addOne(2), 3);
-  //   expect(calculator.addOne(-7), -6);
-  //   expect(calculator.addOne(0), 1);
-  //   expect(() => calculator.addOne(null), throwsNoSuchMethodError);
-  // });
+  test('hello world', () {
+    String program = '''
+flow 'main'
+  send text 'Hello World'
+''';
+
+    var interpreter = Interpreter();
+    interpreter.interpret(program);
+  });
 }

@@ -97,8 +97,14 @@ class FlowStatementNode extends ASTNode {
   List<ASTNode> statements = [];
 
   @override
-  Future<void> execute(ExecutionContext context) {
+  Future<void> execute(ExecutionContext context) async {
     log('execute - called - context: $context');
+
+    log('execute - STARTING FLOW $name');
+    for (var statement in statements) {
+      await statement.execute(context);
+    }
+
     log('execute - finished - context: $context');
   }
 
@@ -133,7 +139,7 @@ class CreateStatementNode extends ASTNode {
   Future<void> execute(ExecutionContext context) {
     log('execute - called - context: $context');
 
-    // todo
+    log('execute - CREATING ENTITY [type=$entityType, name=$entityName]');
 
     log('execute - finished - context: $context');
   }
@@ -160,7 +166,7 @@ class SetDelayStatementNode extends ASTNode {
   Future<void> execute(ExecutionContext context) {
     log('execute - called - context: $context');
 
-    // todo
+    log('execute - SETTING DELAY [dynamic=$dynamicDelay, millis=$delayInMilliseconds]');
 
     log('execute - finished - context: $context');
   }
@@ -173,7 +179,7 @@ class SetSenderStatementNode extends ASTNode {
   Future<void> execute(ExecutionContext context) {
     log('execute - called - context: $context');
 
-    // todo
+    log('execute - SETTING SENDER [name=$senderName]');
 
     log('execute - finished - context: $context');
   }
@@ -186,7 +192,7 @@ class StartFlowStatementNode extends ASTNode {
   Future<void> execute(ExecutionContext context) {
     log('execute - called - context: $context');
 
-    // todo
+    log('execute - STARTING NEW FLOW [name=$flowName]');
 
     log('execute - finished - context: $context');
   }
@@ -197,7 +203,7 @@ class EndFlowStatementNode extends ASTNode {
   Future<void> execute(ExecutionContext context) {
     log('execute - called - context: $context');
 
-    // todo
+    log('execute - ENDING CURRENT FLOW');
 
     log('execute - finished - context: $context');
   }
@@ -219,6 +225,9 @@ class SendStatementNode extends ASTNode {
   @override
   Future<void> execute(ExecutionContext context) {
     log('execute - called - context: $context');
+
+    log('execute - SENDING MESSAGE [type=$messageType, body=$messageBody]');
+
     log('execute - finished - context: $context');
   }
 
@@ -240,13 +249,16 @@ enum TriggerType { delay, click, event }
 
 class WaitStatementNode extends ASTNode {
   TriggerType trigger;
-  int delayInMilliseconds;
-  int clickCount;
-  String eventName;
+  int delayInMilliseconds = 0;
+  int clickCount = 0;
+  String eventName = '';
 
   @override
   Future<void> execute(ExecutionContext context) {
     log('execute - called - context: $context');
+
+    log('execute - WAITING [trigger=$trigger]');
+
     log('execute - finished - context: $context');
   }
 }
